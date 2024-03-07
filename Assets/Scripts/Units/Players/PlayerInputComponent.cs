@@ -19,6 +19,12 @@ namespace RPG.Units.Player
             _controls.Unit.Enable();
             _controls.Unit.SwordAttack.performed += _ => OnAttack("Sword");
             _controls.Unit.ShieldAttack.performed += _ => OnAttack("Shield");
+            _controls.Unit.LockTarget.performed += OnTargetLock;
+        }
+
+        private void OnTargetLock(CallbackContext context)
+        {
+            CallOnTargetEvent();
         }
 
         private void OnAttack(string weapon)
@@ -35,6 +41,7 @@ namespace RPG.Units.Player
         {
             _controls.Unit.SwordAttack.performed -= _ => OnAttack("Sword");
             _controls.Unit.ShieldAttack.performed -= _ => OnAttack("Shield");
+            _controls.Unit.LockTarget.performed -= OnTargetLock;
             _controls.Unit.Disable();
         }
         private void OnDestroy()

@@ -7,5 +7,6 @@ namespace RPG.Units
     public class UnitStatsComponent : MonoBehaviour
     {
         public float MoveSpeed = 3f;
+        public SideType Sidetype;
     }
 }

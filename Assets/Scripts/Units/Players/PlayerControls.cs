@@ -55,6 +55,15 @@ namespace RPG.Units.Player
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""LockTarget"",
+                    ""type"": ""Button"",
+                    ""id"": ""78fc1f3d-8f5b-465e-b101-ffe356c5b201"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -134,6 +143,45 @@ namespace RPG.Units.Player
                     ""action"": ""ShieldAttack"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b04c531c-21cd-456c-9ad3-58612294eff3"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""LockTarget"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                }
+            ]
+        },
+        {
+            ""name"": ""Camera"",
+            ""id"": ""9251d334-1473-47bf-8723-56565cb0df38"",
+            ""actions"": [
+                {
+                    ""name"": ""Delta"",
+                    ""type"": ""Value"",
+                    ""id"": ""568f9be8-7ebf-48ab-8c6a-7bdbefdb7733"",
+                    ""expectedControlType"": ""Vector2"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
+                }
+            ],
+            ""bindings"": [
+                {
+                    ""name"": """",
+                    ""id"": ""2917f6b7-3339-4a22-a111-e33cbc1c5c20"",
+                    ""path"": ""<Mouse>/delta"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Delta"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -145,6 +193,10 @@ namespace RPG.Units.Player
             m_Unit_Move = m_Unit.FindAction("Move", throwIfNotFound: true);
             m_Unit_SwordAttack = m_Unit.FindAction("SwordAttack", throwIfNotFound: true);
             m_Unit_ShieldAttack = m_Unit.FindAction("ShieldAttack", throwIfNotFound: true);
+            m_Unit_LockTarget = m_Unit.FindAction("LockTarget", throwIfNotFound: true);
+            // Camera
+            m_Camera = asset.FindActionMap("Camera", throwIfNotFound: true);
+            m_Camera_Delta = m_Camera.FindAction("Delta", throwIfNotFound: true);
         }
 
         public void Dispose()
@@ -209,6 +261,7 @@ namespace RPG.Units.Player
         private readonly InputAction m_Unit_Move;
         private readonly InputAction m_Unit_SwordAttack;
         private readonly InputAction m_Unit_ShieldAttack;
+        private readonly InputAction m_Unit_LockTarget;
         public struct UnitActions
         {
             private @PlayerControls m_Wrapper;
@@ -216,6 +269,7 @@ namespace RPG.Units.Player
             public InputAction @Move => m_Wrapper.m_Unit_Move;
             public InputAction @SwordAttack => m_Wrapper.m_Unit_SwordAttack;
             public InputAction @ShieldAttack => m_Wrapper.m_Unit_ShieldAttack;
+            public InputAction @LockTarget => m_Wrapper.m_Unit_LockTarget;
             public InputActionMap Get() { return m_Wrapper.m_Unit; }
             public void Enable() { Get().Enable(); }
             public void Disable() { Get().Disable(); }
@@ -234,6 +288,9 @@ namespace RPG.Units.Player
                 @ShieldAttack.started += instance.OnShieldAttack;
                 @ShieldAttack.performed += instance.OnShieldAttack;
                 @ShieldAttack.canceled += instance.OnShieldAttack;
+                @LockTarget.started += instance.OnLockTarget;
+                @LockTarget.performed += instance.OnLockTarget;
+                @LockTarget.canceled += instance.OnLockTarget;
             }
 
             private void UnregisterCallbacks(IUnitActions instance)
@@ -247,6 +304,9 @@ namespace RPG.Units.Player
                 @ShieldAttack.started -= instance.OnShieldAttack;
                 @ShieldAttack.performed -= instance.OnShieldAttack;
                 @ShieldAttack.canceled -= instance.OnShieldAttack;
+                @LockTarget.started -= instance.OnLockTarget;
+                @LockTarget.performed -= instance.OnLockTarget;
+                @LockTarget.canceled -= instance.OnLockTarget;
             }
 
             public void RemoveCallbacks(IUnitActions instance)
@@ -264,11 +324,62 @@ namespace RPG.Units.Player
             }
         }
         public UnitActions @Unit => new UnitActions(this);
+
+        // Camera
+        private readonly InputActionMap m_Camera;
+        private List<ICameraActions> m_CameraActionsCallbackInterfaces = new List<ICameraActions>();
+        private readonly InputAction m_Camera_Delta;
+        public struct CameraActions
+        {
+            private @PlayerControls m_Wrapper;
+            public CameraActions(@PlayerControls wrapper) { m_Wrapper = wrapper; }
+            public InputAction @Delta => m_Wrapper.m_Camera_Delta;
+            public InputActionMap Get() { return m_Wrapper.m_Camera; }
+            public void Enable() { Get().Enable(); }
+            public void Disable() { Get().Disable(); }
+            public bool enabled => Get().enabled;
+            public static implicit operator InputActionMap(CameraActions set) { return set.Get(); }
+            public void AddCallbacks(ICameraActions instance)
+            {
+                if (instance == null || m_Wrapper.m_CameraActionsCallbackInterfaces.Contains(instance)) return;
+                m_Wrapper.m_CameraActionsCallbackInterfaces.Add(instance);
+                @Delta.started += instance.OnDelta;
+                @Delta.performed += instance.OnDelta;
+                @Delta.canceled += instance.OnDelta;
+            }
+
+            private void UnregisterCallbacks(ICameraActions instance)
+            {
+                @Delta.started -= instance.OnDelta;
+                @Delta.performed -= instance.OnDelta;
+                @Delta.canceled -= instance.OnDelta;
+            }
+
+            public void RemoveCallbacks(ICameraActions instance)
+            {
+                if (m_Wrapper.m_CameraActionsCallbackInterfaces.Remove(instance))
+                    UnregisterCallbacks(instance);
+            }
+
+            public void SetCallbacks(ICameraActions instance)
+            {
+                foreach (var item in m_Wrapper.m_CameraActionsCallbackInterfaces)
+                    UnregisterCallbacks(item);
+                m_Wrapper.m_CameraActionsCallbackInterfaces.Clear();
+                AddCallbacks(instance);
+            }
+        }
+        public CameraActions @Camera => new CameraActions(this);
         public interface IUnitActions
         {
             void OnMove(InputAction.CallbackContext context);
             void OnSwordAttack(InputAction.CallbackContext context);
             void OnShieldAttack(InputAction.CallbackContext context);
+            void OnLockTarget(InputAction.CallbackContext context);
+        }
+        public interface ICameraActions
+        {
+            void OnDelta(InputAction.CallbackContext context);
         }
     }
 }

@@ -8,10 +8,14 @@ namespace RPG.Units
     [RequireComponent(typeof(Animator))]
     public class Unit : MonoBehaviour
     {
+        public Unit Target { get; private set; }
         private bool _inAnimationAttack;
         private Animator _animator;
         private UnitInputComponent _inputs;
         private UnitStatsComponent _stats;
+        public delegate void OnTargetUpdateHandler();
+        public OnTargetUpdateHandler OnTargetLostEvent;
+        public Transform FocusPoint;
         private void Start()
         {
             _animator = GetComponent<Animator>();
@@ -22,6 +26,38 @@ namespace RPG.Units
                 return;
             }
             _inputs.OnAttackEvent += OnAttack;
+            _inputs.OnTargetEvent += OnTargetUpdate;
+        }
+
+        private void OnTargetUpdate()
+        {
+            if (Target != null)
+            {
+                Target = null;
+                OnTargetLostEvent?.Invoke();
+                return;
+            }
+            var units = FindObjectsOfType<UnitStatsComponent>(); //todo fix
+            var distance = float.MaxValue; //todo 
+            UnitStatsComponent target = null;
+            foreach (var unit in units)
+            {
+                if (_stats.Sidetype == unit.Sidetype)
+                {
+                    continue;
+                }
+                var currentDistance = (unit.transform.position - transform.position).sqrMagnitude;
+                if (currentDistance < distance)
+                {
+                    distance = currentDistance;
+                    target = unit;
+                }
+            }
+            if (target == null)
+            {
+                return;
+            }
+            Target = target.GetComponent<Unit>();
         }
 
         private void OnAttack(string weapon)
@@ -31,7 +67,7 @@ namespace RPG.Units
             _inAnimationAttack = true;
         }
 
-        private void Update()
+        protected virtual void Update()
         {
             OnMove();
         }
